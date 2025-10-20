@@ -109,8 +109,8 @@ jobs:
 
       - name: Pull and start services
         run: |
-          docker compose -f docker-compose.yml pull
-          docker compose -f docker-compose.yml up -d
+          docker compose -f docker-compose.yaml pull
+          docker compose -f docker-compose.yaml up -d
           docker ps
 
       - name: Wait for Backend API to be healthy
