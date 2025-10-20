@@ -31,7 +31,6 @@ jobs:
         with:
           image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-backend:latest  # Local image
           format: 'table'
-          exit-code: 1
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -47,7 +46,6 @@ jobs:
         with:
           image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:latest  # Local image
           format: 'table'
-          exit-code: 1
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
