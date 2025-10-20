@@ -8,7 +8,7 @@ on:
 jobs:
   # ======================
   # Build Backend & Frontend
-  # ======================
+  # =====================
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
