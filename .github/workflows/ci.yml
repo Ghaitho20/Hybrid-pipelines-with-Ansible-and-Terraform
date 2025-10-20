@@ -29,7 +29,7 @@ jobs:
       - name: Scan backend image with Trivy (LOCAL)
         uses: aquasecurity/trivy-action@0.18.0
         with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-backend:latest  # Local image
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-backend:latest  
           format: 'table'
           ignore-unfixed: true
           vuln-type: 'os,library'
@@ -44,7 +44,7 @@ jobs:
       - name: Scan frontend image with Trivy (LOCAL)
         uses: aquasecurity/trivy-action@0.18.0
         with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:latest  # Local image
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:latest  
           format: 'table'
           ignore-unfixed: true
           vuln-type: 'os,library'
@@ -73,7 +73,7 @@ jobs:
 
       - name: Install backend dependencies
         run: |
-          pip install -r backend/requirements.txt
+          pip install -r ./backend/app/requirements.txt
 
       - name: Run backend tests
         run: |
