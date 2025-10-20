@@ -1,0 +1,9 @@
+Flask
+Flask-CORS
+SQLAlchemy
+psycopg2-binary
+python-dotenv
+requests
+prometheus_client
+pytest
+pytest-cov

@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: parisdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - paris-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    image: ghaitho20/paris-backend:latest
+    ports:
+      - "5000:5000"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: parisdb
+      POSTGRES_SERVICE: db  
+      POSTGRES_PORT: 5432
+      LIMIT_EXAMPLES: 100
+      # Flask configuration
+      FLASK_DEBUG: "false"
+      FLASK_HOST: "0.0.0.0"
+      FLASK_PORT: 5000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - paris-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend
+  frontend:
+    image: ghaitho20/paris-frontend:latest
+    ports:
+      - "80:80"
+    environment:
+      API_URL: http://localhost:5000  # This will be used in config.js
+    depends_on:
+      - backend
+    networks:
+      - paris-network
+  
+  #Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - paris-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - paris-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_SERVICE}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - paris-network
+
+
+    
+volumes:
+  postgres_data:
+  grafana_data:
+
+networks:
+  paris-network:
+    driver: bridge

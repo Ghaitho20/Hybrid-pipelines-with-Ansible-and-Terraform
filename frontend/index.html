@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arbres de Paris - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Arbres de Paris - Analyse des données</h1>
+            <p>Visualisation des données open-data sur les arbres parisiens</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Arbres par Arrondissement</h3>
+                <canvas id="arrondissementChart"></canvas>
+            </div>
+
+            <div class="stat-card">
+                <h3>Espèces les Plus Communes</h3>
+                <canvas id="speciesChart"></canvas>
+            </div>
+
+            <div class="stat-card">
+                <h3>Hauteur Moyenne par Espèce</h3>
+                <canvas id="heightChart"></canvas>
+            </div>
+
+            <div class="stat-card">
+                <h3>Arbres Remarquables</h3>
+                <canvas id="remarkableChart"></canvas>
+            </div>
+        </div>
+
+        <div class="map-section">
+            <h3>Carte des Arbres</h3>
+            <div id="map"></div>
+        </div>
+
+        <footer>
+            <p>Données source: <a href="https://opendata.paris.fr" target="_blank">OpenData Paris</a></p>
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="config.js"></script> <!-- genrated by envsubst -->
+    
+    <script src="app.js"></script>
+</body>
+</html>
