@@ -104,8 +104,8 @@ jobs:
 
       - name: Wait for Backend API to be healthy
         run: |
-          chmod +x ./workflows_scripts/wait-backend.sh
-          ./workflows_scripts/wait-backend.sh
+          chmod +x ./worflows_scripts/wait-backend.sh
+          ./worflows_scripts/wait-backend.sh
   # # Trigger Jenkins Pipelines
   # trigger-jenkins:
   #   name: Trigger Jenkins CD Pipelines
