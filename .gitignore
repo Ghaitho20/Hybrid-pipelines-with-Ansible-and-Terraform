@@ -1,1 +1,9 @@
 __pycache__/
+*.pem
+*.pub
+.terraform/
+*.tfstate*
+jenkins_agent
+.pytest_cache
+terraform.tfvars
+

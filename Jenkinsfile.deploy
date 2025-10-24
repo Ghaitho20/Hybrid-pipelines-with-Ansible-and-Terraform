@@ -1,0 +1,66 @@
+pipeline {
+  agent { label 'agent1' }
+  parameters {
+    string(name: 'EC2_IP', defaultValue: '', description: 'IP of EC2 instance')
+  }
+  options {
+    // Prevent multiple builds running at the same time
+    disableConcurrentBuilds()
+
+  }
+
+  environment {
+    DOCKERHUB_CRED = credentials('dockerhub-creds')
+    SSH_KEY_CRED = 'ssh-key'
+  }
+
+  stages {
+    stage('Checkout') { steps { checkout scm } }
+
+    stage('SSH Deploy to VM') {
+        steps {
+            withCredentials([
+            usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
+            file(credentialsId: env.SSH_KEY_CRED, variable: 'SSH_KEY_FILE')
+            ]) {
+            lock(resource: "vm-deploy-${params.EC2_IP}") {
+                script {
+                def ip = params.EC2_IP
+                sh """
+                    chmod 600 ${SSH_KEY_FILE}
+
+                    ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${ip} '
+                    # install git if needed
+                    sudo apt update && sudo apt install -y git
+
+                    # clone or update the repo
+                    if [ -d ~/project ]; then
+                        cd ~/project && git pull
+                    else
+                        git clone https://github.com/your-username/your-repo.git ~/project
+                    fi
+
+                    # go to project folder
+                    cd ~/project
+
+                    # run docker compose
+                    docker compose down || true
+                    docker compose up -d
+                    '
+                """
+                }
+            }
+            }
+        }
+    }
+
+
+    stage('Verify') {
+      steps {
+        script {
+
+        }
+      }
+    }
+  }
+}

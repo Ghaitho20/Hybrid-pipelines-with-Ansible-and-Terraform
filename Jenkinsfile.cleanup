@@ -1,0 +1,38 @@
+pipeline {
+  agent { label 'agent1' }
+
+  environment {
+    AZURE_CREDENTIALS_ID = 'azure-sp-creds' // Service Principal in Jenkins
+    AZURE_DEFAULT_RG = 'rg-ci'
+  }
+
+  stages {
+    stage('Find ephemeral VMs') {
+      steps {
+        withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
+          script {
+            // Get ephemeral VM names
+            def vms = sh(script: """
+              az vm list --resource-group ${env.AZURE_DEFAULT_RG} --show-details \
+                --query "[?tags.lifespan=='ephemeral'].name" -o tsv
+            """, returnStdout: true).trim()
+
+            if (!vms) {
+              echo "No ephemeral VMs found"
+              currentBuild.description = "No ephemeral VMs found"
+            } else {
+              echo "Found ephemeral VMs: ${vms}"
+
+              // Delete each VM
+              vms.split('\\s+').each { vm ->
+                sh "az vm delete --resource-group ${env.AZURE_DEFAULT_RG} --name ${vm} --yes --no-wait"
+              }
+
+              currentBuild.description = "Deleted VMs: ${vms}"
+            }
+          }
+        }
+      }
+    }
+  }
+}

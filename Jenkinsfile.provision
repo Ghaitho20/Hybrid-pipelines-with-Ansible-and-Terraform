@@ -1,0 +1,87 @@
+pipeline {
+  agent { label 'agent1' }
+
+  environment {
+    TF_DIR = "terraform"
+    AZURE_CREDENTIALS_ID = "azure-sp-creds"  // Jenkins Service Principal
+    SSH_CREDENTIALS_ID = "ssh-key"
+    AZURE_DEFAULT_RG = "rg-ci"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Terraform Init & Apply') {
+      steps {
+        withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
+          dir("${TF_DIR}") {
+            sh '''
+              terraform init -input=false
+              terraform apply -var-file="terraform.tfvars" -auto-approve -input=false
+            '''
+          }
+        }
+      }
+    }
+
+    stage('Wait for VM to be ready') {
+      steps {
+        echo "Waiting 60 seconds for Azure VM to initialize..."
+        sleep 60
+      }
+    }
+
+    stage('Get outputs') {
+      steps {
+        dir("${TF_DIR}") {
+          script {
+            // Terraform output for Azure VM public IP
+            def ip = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
+            echo "Azure VM IP: ${ip}"
+
+            // Save for downstream jobs or debugging
+            writeFile file: 'vm_ip.txt', text: ip
+            archiveArtifacts artifacts: 'vm_ip.txt', fingerprint: true
+
+            // Add info to build metadata
+            currentBuild.description = "VM_IP=${ip}"
+            env.VM_IP = ip
+          }
+        }
+      }
+    }
+
+    stage('Ansible configure') {
+      steps {
+        withCredentials([file(credentialsId: env.SSH_CREDENTIALS_ID, variable: 'SSH_KEY_FILE')]) {
+          script {
+            def ip = readFile("${TF_DIR}/vm_ip.txt").trim()
+            sh """
+              # Set proper permissions for the SSH key
+              chmod 600 ${SSH_KEY_FILE}
+
+              # Create Ansible inventory
+              echo "[ephemeral]" > /tmp/inv
+              echo "${ip}" >> /tmp/inv
+
+              # Run Ansible playbook
+              ANSIBLE_HOST_KEY_CHECKING=False \\
+              ansible-playbook -i /tmp/inv ansible/playbook.yaml \\
+                  --private-key=${SSH_KEY_FILE} -u azureuser
+            """
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      build job: 'Pipeline-two', parameters: [string(name: 'VM_IP', value: env.VM_IP)]
+    }
+  }
+}
