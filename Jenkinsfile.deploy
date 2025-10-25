@@ -34,12 +34,12 @@ pipeline {
                 if [ -d ~/project ]; then
                     cd ~/project && git pull
                 else
-                    git clone https://github.com/your-username/your-repo.git ~/project
+                    git clone https://github.com/Ghaitho20/Hybrid-pipelines-with-Ansible-and-Terraform.git ~/project
                 fi
 
-                cd ~/project
+                cd ~/project                                                                                                             
                 sudo docker compose down || true
-                sudo docker compose up -d
+                sudo docker compose up -d                                    
               "
               
               # Clean up
