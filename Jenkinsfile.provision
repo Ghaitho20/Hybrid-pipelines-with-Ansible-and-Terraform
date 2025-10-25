@@ -23,8 +23,7 @@ pipeline {
             ]) {
               script {
                 //read Variable
-                def ssh_pub_content = readFile("${SSH_PUB_FILE}").trim()
-                echo ${ssh_pub_content}
+                def ssh_pub_content = readFile(SSH_PUB_FILE).trim().replaceAll("\n","")
                 dir("${TF_DIR}") {
 
                     sh '''
