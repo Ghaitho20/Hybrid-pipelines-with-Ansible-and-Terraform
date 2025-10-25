@@ -28,6 +28,10 @@ variable "admin_username" {
   default = "azureuser"
 }
 
+//this var will be injected in the pipeline as credentials 
+
 variable "ssh_public_key" {
-   default = "~/.ssh/id_rsa.pub"  
+    description = "The public SSH key to access the VM"
+    type        = string
+   //default = file("~/.ssh/id_rsa.pub")  (only for testing locally )
 }
