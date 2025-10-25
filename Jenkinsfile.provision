@@ -21,6 +21,7 @@ pipeline {
                 string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'TF_VAR_azure_client_secret'),
                 file(credentialsId: 'SSH_PUBLIC_KEY_FILE', variable: 'SSH_PUB_FILE')
             ]) {
+              script {
                 //read Variable
                 def ssh_pub_content = readFile("${SSH_PUB_FILE}").trim()
                 dir("${TF_DIR}") {
@@ -30,6 +31,7 @@ pipeline {
                         terraform apply -auto-approve -var 'ssh_public_key=${ssh_pub_content}' -input=false
                     '''
                 }
+              }  
             }
         }
     }
