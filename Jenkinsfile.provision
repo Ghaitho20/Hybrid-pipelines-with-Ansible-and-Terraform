@@ -51,7 +51,10 @@ pipeline {
         dir("${TF_DIR}") {
           script {
             //extracting of Ip address
-            def ip = "10.10.12.3"
+            def ip = sh(
+              script: "terraform output -raw public_ip",
+              returnStdout: true
+            ).trim()
             
 
             // Save VM ip address in a file named vm_ip.txt in the ${TF_DIR} folder
