@@ -40,7 +40,7 @@ pipeline {
     stage('Wait for VM to be ready') {
       steps {
         echo "Waiting 60 seconds for Azure VM to initialize..."
-        sleep 60
+        sleep 1
       }
     }
 
@@ -69,7 +69,7 @@ pipeline {
             def ip = readFile(folder).trim()
             sh """
               # Set proper permissions for the SSH key
-              chmod 600 ${SSH_KEY_FILE}
+              chmod 600 \$SSH_KEY_FILE
 
               # Create Ansible inventory
               echo "[ephemeral]" > /tmp/inv
