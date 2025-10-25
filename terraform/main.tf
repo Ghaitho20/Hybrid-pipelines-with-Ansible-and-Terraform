@@ -1,6 +1,6 @@
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-ci"
-  location = "East US"
+  name = "rg-ci-new"
+  location = "francecentral"
 }
 
 resource "azurerm_virtual_network" "vnet" {
@@ -15,6 +15,8 @@ resource "azurerm_subnet" "subnet" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
+
+  depends_on = [azurerm_virtual_network.vnet]
 }
 
 resource "azurerm_network_security_group" "nsg" {
@@ -28,8 +30,8 @@ resource "azurerm_network_security_group" "nsg" {
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
-    source_port_range           = "*"
-    destination_port_range      = "22"
+    source_port_range          = "*"
+    destination_port_range     = "22"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
@@ -40,11 +42,33 @@ resource "azurerm_network_security_group" "nsg" {
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
-    source_port_range           = "*"
-    destination_port_range      = "80"
+    source_port_range          = "*"
+    destination_port_range     = "80"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+
+  # Add this rule for port 5000
+  security_rule {
+    name                       = "BACKEND"
+    priority                   = 1003
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "5000"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+
+resource "azurerm_public_ip" "pip" {
+  name                = "pip-ci"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
 }
 
 resource "azurerm_network_interface" "nic" {
@@ -56,7 +80,7 @@ resource "azurerm_network_interface" "nic" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id           = azurerm_public_ip.pip.id
+    public_ip_address_id          = azurerm_public_ip.pip.id
   }
 }
 
@@ -65,17 +89,6 @@ resource "azurerm_network_interface_security_group_association" "nic_nsg" {
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
-
-
-resource "azurerm_public_ip" "pip" {
-  name                = "pip-ci"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  allocation_method   = "Dynamic"
-}
-
-
-#VM
 resource "azurerm_linux_virtual_machine" "vm" {
   name                = "ci-ephemeral"
   resource_group_name = azurerm_resource_group.rg.name
@@ -86,7 +99,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = var.ssh_public_key
+    public_key = file(var.ssh_public_key)
   }
 
   os_disk {
@@ -96,8 +109,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   source_image_reference {
     publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "20_04-lts-gen2"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
     version   = "latest"
   }
 
@@ -106,4 +119,9 @@ resource "azurerm_linux_virtual_machine" "vm" {
     lifespan = "ephemeral"
     owner    = "jenkins"
   }
+
+  depends_on = [
+    azurerm_network_interface.nic,
+    azurerm_public_ip.pip
+  ]
 }
