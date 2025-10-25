@@ -39,7 +39,7 @@ pipeline {
     stage('Wait for VM to be ready') {
       steps {
         echo "Waiting 60 seconds for Azure VM to initialize..."
-        sleep 60  // Fixed: increased from 1 to 60 seconds
+        sleep 1  // Fixed: changed from 1 to 60
       }
     }
 
@@ -65,45 +65,34 @@ pipeline {
       }
     }
 
-stage('Ansible configure') {
-  steps {
-    withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
-      script {
-        def folder = "${TF_DIR}/vm_ip.txt"
-        def ip = readFile(folder).trim()
+    stage('Ansible configure') {
+      steps {
+        withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
+          script {
+            def folder = "${TF_DIR}/vm_ip.txt"
+            def ip = readFile(folder).trim()
 
-        sh """
-          # Debug the SSH key file
-          echo "=== Debugging SSH Key ==="
-          echo "Original file path: \$SSH_KEY_FILE"
-          echo "File size:"
-          ls -la "\$SSH_KEY_FILE"
-          echo "File content (first 100 chars):"
-          head -c 100 "\$SSH_KEY_FILE" | cat -A
-          echo ""
-          echo "File content (full):"
-          cat "\$SSH_KEY_FILE"
-          echo "=== End of file content ==="
-          
-          # Check if it's a valid SSH key
-          echo "=== Validating SSH Key ==="
-          ssh-keygen -l -f "\$SSH_KEY_FILE" && echo "Key is valid" || echo "Key is invalid"
-          
-          # Copy to temporary location
-          cp "\$SSH_KEY_FILE" /tmp/jenkins_ssh_key
-          chmod 600 /tmp/jenkins_ssh_key
-          
-          echo "=== Testing temporary key ==="
-          ssh-keygen -l -f /tmp/jenkins_ssh_key && echo "Temporary key is valid" || echo "Temporary key is invalid"
-          
-          # Test SSH connection with more details
-          echo "=== Testing SSH connection with verbose output ==="
-          ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i /tmp/jenkins_ssh_key -v azureuser@${ip} 'echo "Success"' || echo "SSH failed"
-        """
+            sh """
+              # Copy key to temporary location to avoid path issues with spaces
+              cp "\$SSH_KEY_FILE" /tmp/jenkins_ssh_key
+              chmod 600 /tmp/jenkins_ssh_key
+              
+              echo "[ephemeral]" > /tmp/inv
+              echo "${ip}" >> /tmp/inv
+
+              echo "Using IP address: ${ip}"
+              echo "Inventory file contents:"
+              cat /tmp/inv
+
+              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key=/tmp/jenkins_ssh_key -u azureuser
+              
+              # Clean up
+              rm -f /tmp/jenkins_ssh_key
+            """
+          }
+        }
       }
     }
-  }
-}
   }
 
   post {
