@@ -76,7 +76,7 @@ pipeline {
               echo "${ip}" >> /tmp/inv
 
               # Run Ansible playbook
-              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yaml --private-key=${SSH_KEY_FILE} -u azureuser
+              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yaml --private-key=\${SSH_KEY_FILE} -u azureuser
             """
           }
         }
