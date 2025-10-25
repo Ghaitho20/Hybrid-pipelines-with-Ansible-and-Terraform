@@ -72,21 +72,24 @@ pipeline {
           script {
             def folder = "${TF_DIR}/vm_ip.txt"
             def ip = readFile(folder).trim()
-            sh """
-              # Set proper permissions for the SSH key (with quotes)
-              chmod 600 "\$SSH_KEY_FILE"
+            
+            // Use single quotes for sh block and escape variables properly
+            sh '''
+              # Set proper permissions for the SSH key
+              chmod 600 "$SSH_KEY_FILE"
 
               # Create Ansible inventory
               echo "[ephemeral]" > /tmp/inv
-              echo "${ip}" >> /tmp/inv
+              echo "'${ip}'" >> /tmp/inv
 
-              # Run Ansible playbook (with quotes around key path)
-              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key="\$SSH_KEY_FILE" -u azureuser
-            """
+              # Run Ansible playbook
+              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key="$SSH_KEY_FILE" -u azureuser
+            '''
           }
         }
-      }
+      } 
     }
+
   }
 
   // post {
