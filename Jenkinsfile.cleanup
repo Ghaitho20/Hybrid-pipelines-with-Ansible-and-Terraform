@@ -7,13 +7,22 @@ pipeline {
     stage('Find ephemeral VMs') {
       steps {
         withCredentials([
-                string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'TF_VAR_azure_subscription_id'),
-                string(credentialsId: 'AZURE_TENANT_ID', variable: 'TF_VAR_azure_tenant_id'),
-                string(credentialsId: 'AZURE_CLIENT_ID', variable: 'TF_VAR_azure_client_id'),
-                string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'TF_VAR_azure_client_secret'),
-                file(credentialsId: 'SSH_PUBLIC_KEY_FILE', variable: 'SSH_PUB_FILE')
+          string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID'),
+          string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+          string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET')
         ]){
           script {
+            // Login to Azure first
+            sh """
+              az login --service-principal \
+                --username \$AZURE_CLIENT_ID \
+                --password \$AZURE_CLIENT_SECRET \
+                --tenant \$AZURE_TENANT_ID
+              
+              az account set --subscription \$AZURE_SUBSCRIPTION_ID
+            """
+
             // Get ephemeral VM names
             def vms = sh(script: """
               az vm list --resource-group ${env.AZURE_DEFAULT_RG} --show-details \
@@ -28,6 +37,7 @@ pipeline {
 
               // Delete each VM
               vms.split('\\s+').each { vm ->
+                echo "Deleting VM: ${vm}"
                 sh "az vm delete --resource-group ${env.AZURE_DEFAULT_RG} --name ${vm} --yes --no-wait"
               }
 
