@@ -12,55 +12,70 @@ pipeline {
       }
     }
 
-    stage('Terraform Init & Apply') {
-        steps {
-            withCredentials([
-                string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'TF_VAR_azure_subscription_id'),
-                string(credentialsId: 'AZURE_TENANT_ID', variable: 'TF_VAR_azure_tenant_id'),
-                string(credentialsId: 'AZURE_CLIENT_ID', variable: 'TF_VAR_azure_client_id'),
-                string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'TF_VAR_azure_client_secret'),
-                file(credentialsId: 'SSH_PUBLIC_KEY_FILE', variable: 'SSH_PUB_FILE')
-            ]) {
-              script {
-                //read Variable
-                def ssh_pub_content = readFile(SSH_PUB_FILE).trim().replaceAll("\n","")
-                dir("${TF_DIR}") {
+    // stage('Terraform Init & Apply') {
+    //     steps {
+    //         withCredentials([
+    //             string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'TF_VAR_azure_subscription_id'),
+    //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'TF_VAR_azure_tenant_id'),
+    //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'TF_VAR_azure_client_id'),
+    //             string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'TF_VAR_azure_client_secret'),
+    //             file(credentialsId: 'SSH_PUBLIC_KEY_FILE', variable: 'SSH_PUB_FILE')
+    //         ]) {
+    //           script {
+    //             //read Variable
+    //             def ssh_pub_content = readFile(SSH_PUB_FILE).trim().replaceAll("\n","")
+    //             dir("${TF_DIR}") {
 
-                    sh """
-                        terraform init -input=false
-                        terraform apply -auto-approve -var 'ssh_public_key=${ssh_pub_content}' -input=false
-                    """
-                }
-              }  
-            }
-        }
-    }
+    //                 sh """
+    //                     terraform init -input=false
+    //                     terraform apply -auto-approve -var 'ssh_public_key=${ssh_pub_content}' -input=false
+    //                 """
+    //             }
+    //           }  
+    //         }
+    //     }
+    // }
 
 
-    stage('Wait for VM to be ready') {
-      steps {
-        echo "Waiting 60 seconds for Azure VM to initialize..."
-        sleep 60
-      }
-    }
+    // stage('Wait for VM to be ready') {
+    //   steps {
+    //     echo "Waiting 60 seconds for Azure VM to initialize..."
+    //     sleep 60
+    //   }
+    // }
+
+    // stage('Get outputs') {
+    //   steps {
+    //     dir("${TF_DIR}") {
+    //       script {
+    //         //extracting of Ip address
+    //         def ip = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
+    //         echo "Azure VM IP: ${ip}"
+
+    //         // Save VM ip address in a file named vm_ip.txt in the ${TF_DIR} folder
+    //         writeFile file: 'vm_ip.txt', text: ip
+
+    //         //publish artifacts 
+    //         archiveArtifacts artifacts: 'vm_ip.txt', fingerprint: true
+
+    //         // Add info to build metadata
+    //         currentBuild.description = "VM_IP=${ip}"
+    //         env.VM_IP = ip
+    //       }
+    //     }
+    //   }
+    // }
 
     stage('Get outputs') {
       steps {
         dir("${TF_DIR}") {
           script {
             //extracting of Ip address
-            def ip = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
-            echo "Azure VM IP: ${ip}"
+            def ip = "10.10.12.3"
+            
 
             // Save VM ip address in a file named vm_ip.txt in the ${TF_DIR} folder
             writeFile file: 'vm_ip.txt', text: ip
-
-            //publish artifacts 
-            archiveArtifacts artifacts: 'vm_ip.txt', fingerprint: true
-
-            // Add info to build metadata
-            currentBuild.description = "VM_IP=${ip}"
-            env.VM_IP = ip
           }
         }
       }
@@ -70,19 +85,20 @@ pipeline {
       steps {
         withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
           script {
-            def ip = readFile("${TF_DIR}/vm_ip.txt").trim()
-            sh """
-              # Set proper permissions for the SSH key
-              chmod 600 ${SSH_KEY_FILE}
+            def folder = "${TF_DIR}/vm_ip.txt"
+            def ip = readFile(folder).trim()
+            // sh """
+            //   # Set proper permissions for the SSH key
+            //   chmod 600 ${SSH_KEY_FILE}
 
-              # Create Ansible inventory
-              echo "[ephemeral]" > /tmp/inv
-              echo "${ip}" >> /tmp/inv
+            //   # Create Ansible inventory
+            //   echo "[ephemeral]" > /tmp/inv
+            //   echo "${ip}" >> /tmp/inv
 
-              # Run Ansible playbook
-              ANSIBLE_HOST_KEY_CHECKING=False \\
-              ansible-playbook -i /tmp/inv ansible/playbook.yaml \\
-                  --private-key=${SSH_KEY_FILE} -u azureuser
+            //   # Run Ansible playbook
+            //   ANSIBLE_HOST_KEY_CHECKING=False \\
+            //   ansible-playbook -i /tmp/inv ansible/playbook.yaml \\
+            //       --private-key=${SSH_KEY_FILE} -u azureuser
             """
           }
         }
