@@ -15,7 +15,9 @@ pipeline {
 
   stages {
     stage('Checkout') {
-      steps { checkout scm }
+      steps { 
+        checkout scm 
+      }
     }
 
     stage('SSH Deploy to Azure VM') {
@@ -25,27 +27,26 @@ pipeline {
             script {
               def ip = params.VM_IP
               sh """
-              chmod 600 "$SSH_KEY_FILE"
+                chmod 600 "\$SSH_KEY_FILE"
 
-              ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_FILE" azureuser@$ip "
-                if [ -d ~/project ]; then
-                    cd ~/project && git pull
-                else
-                    git clone https://github.com/your-username/your-repo.git ~/project
-                fi
+                ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "
+                  if [ -d ~/project ]; then
+                      cd ~/project && git pull
+                  else
+                      git clone https://github.com/your-username/your-repo.git ~/project
+                  fi
 
-                cd ~/project
+                  cd ~/project
 
-                sudo docker compose down || true
-                sudo docker compose up -d
-              "
-            """
-
-          }
-        }
+                  sudo docker compose down || true
+                  sudo docker compose up -d
+                "
+              """
+            }
+          }  // Missing this closing brace for 'lock'
+        }  // Missing this closing brace for 'withCredentials'
       }
     }
-
 
     stage('Verify') {
       steps {
@@ -56,22 +57,19 @@ pipeline {
               echo "Verifying VM $ip..."
 
               # Check SSH connectivity
-              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} azureuser@$ip "echo 'SSH connection OK'"
+              ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "echo 'SSH connection OK'"
 
               # Check Docker service
-              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} azureuser@$ip "sudo systemctl is-active docker"
+              ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "sudo systemctl is-active docker"
 
               # List Docker containers
-              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} azureuser@$ip "docker ps --format 'table {{.Names}}\\t{{.Status}}'"
+              ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "docker ps --format 'table {{.Names}}\\t{{.Status}}'"
               
               echo "Verification finished."
             """
-
           }
         }
       }
     }
-
   }
-} 
 }
