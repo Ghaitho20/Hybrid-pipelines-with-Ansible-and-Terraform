@@ -36,11 +36,10 @@ pipeline {
         }
     }
 
-
     stage('Wait for VM to be ready') {
       steps {
         echo "Waiting 60 seconds for Azure VM to initialize..."
-        sleep 1
+        sleep 60  // Fixed: increased from 1 to 60 seconds
       }
     }
 
@@ -66,17 +65,23 @@ pipeline {
       }
     }
 
- stage('Ansible configure') {
+    stage('Ansible configure') {
       steps {
         withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
           script {
             def folder = "${TF_DIR}/vm_ip.txt"
             def ip = readFile(folder).trim()
 
-            // Use double quotes for shell script to allow variable expansion
             sh """
-              chmod 600 "\$SSH_KEY_FILE"
-              echo "\$SSH_KEY_FILE"
+              # Copy the SSH key to a temporary location without spaces in the path
+              cp "\$SSH_KEY_FILE" /tmp/jenkins_ssh_key
+              chmod 600 /tmp/jenkins_ssh_key
+
+              # Test SSH connection first
+              echo "=== Testing SSH connection ==="
+              ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no -i /tmp/jenkins_ssh_key azureuser@${ip} 'echo "SSH connection successful!"'
+
+              # Create Ansible inventory
               echo "[ephemeral]" > /tmp/inv
               echo "${ip}" >> /tmp/inv
 
@@ -84,7 +89,11 @@ pipeline {
               echo "Inventory file contents:"
               cat /tmp/inv
 
-              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key="\$SSH_KEY_FILE" -u azureuser
+              # Run Ansible with the temporary key
+              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key=/tmp/jenkins_ssh_key -u azureuser -vvv
+
+              # Clean up temporary key
+              rm -f /tmp/jenkins_ssh_key
             """
           }
         }
@@ -105,5 +114,4 @@ pipeline {
       echo "Pipeline failed. Hybrid pipeline Second Job (deploy) will not be triggered."
     }
   }
-
 }
