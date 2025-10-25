@@ -40,7 +40,7 @@ pipeline {
     stage('Wait for VM to be ready') {
       steps {
         echo "Waiting 60 seconds for Azure VM to initialize..."
-        sleep 1
+        sleep 60
       }
     }
 
@@ -92,9 +92,18 @@ pipeline {
 
   }
 
-  // post {
-  //   success {
-  //     build job: 'Pipeline-two', parameters: [string(name: 'VM_IP', value: env.VM_IP)]
-  //   }
-  // }
+  post {
+    success {
+      // Trigger Pipeline-two and pass VM_IP as a string parameter
+      build job: 'Hybrid pipeline Second Job (deploy)', 
+            parameters: [
+              string(name: 'VM_IP', value: env.VM_IP)
+            ],
+            wait: false  // Optional: don't wait for the triggered pipeline to finish
+    }
+    failure {
+      echo "Pipeline failed. Hybrid pipeline Second Job (deploy) will not be triggered."
+    }
+  }
+
 }

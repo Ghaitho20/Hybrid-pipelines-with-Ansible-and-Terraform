@@ -1,15 +1,18 @@
 pipeline {
-  agent { label 'agent1' }
-
+  agent any
   environment {
-    AZURE_CREDENTIALS_ID = 'azure-sp-creds' // Service Principal in Jenkins
     AZURE_DEFAULT_RG = 'rg-ci'
   }
-
   stages {
     stage('Find ephemeral VMs') {
       steps {
-        withCredentials([azureServicePrincipal(credentialsId: env.AZURE_CREDENTIALS_ID)]) {
+        withCredentials([
+                string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'TF_VAR_azure_subscription_id'),
+                string(credentialsId: 'AZURE_TENANT_ID', variable: 'TF_VAR_azure_tenant_id'),
+                string(credentialsId: 'AZURE_CLIENT_ID', variable: 'TF_VAR_azure_client_id'),
+                string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'TF_VAR_azure_client_secret'),
+                file(credentialsId: 'SSH_PUBLIC_KEY_FILE', variable: 'SSH_PUB_FILE')
+        ]){
           script {
             // Get ephemeral VM names
             def vms = sh(script: """

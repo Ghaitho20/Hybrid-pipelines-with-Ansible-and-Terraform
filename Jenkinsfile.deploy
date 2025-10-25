@@ -1,66 +1,76 @@
 pipeline {
-  agent { label 'agent1' }
-  parameters {
-    string(name: 'EC2_IP', defaultValue: '', description: 'IP of EC2 instance')
-  }
-  options {
-    // Prevent multiple builds running at the same time
-    disableConcurrentBuilds()
+  agent any
 
+  parameters {
+    string(name: 'VM_IP', defaultValue: '', description: 'IP of the Azure VM')
+  }
+
+  options {
+    disableConcurrentBuilds()
   }
 
   environment {
-    DOCKERHUB_CRED = credentials('dockerhub-creds')
-    SSH_KEY_CRED = 'ssh-key'
+    SSH_KEY_CRED = 'SSH_KEY_FILE'
   }
 
   stages {
-    stage('Checkout') { steps { checkout scm } }
+    stage('Checkout') {
+      steps { checkout scm }
+    }
 
-    stage('SSH Deploy to VM') {
-        steps {
-            withCredentials([
-            usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
-            file(credentialsId: env.SSH_KEY_CRED, variable: 'SSH_KEY_FILE')
-            ]) {
-            lock(resource: "vm-deploy-${params.EC2_IP}") {
-                script {
-                def ip = params.EC2_IP
-                sh """
-                    chmod 600 ${SSH_KEY_FILE}
+    stage('SSH Deploy to Azure VM') {
+      steps {
+        withCredentials([file(credentialsId: env.SSH_KEY_CRED, variable: 'SSH_KEY_FILE')]) {
+          lock(resource: "vm-deploy-${params.VM_IP}") {
+            script {
+              def ip = params.VM_IP
+              sh """
+              chmod 600 "$SSH_KEY_FILE"
 
-                    ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} ubuntu@${ip} '
-                    # install git if needed
-                    sudo apt update && sudo apt install -y git
+              ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_FILE" azureuser@$ip "
+                if [ -d ~/project ]; then
+                    cd ~/project && git pull
+                else
+                    git clone https://github.com/your-username/your-repo.git ~/project
+                fi
 
-                    # clone or update the repo
-                    if [ -d ~/project ]; then
-                        cd ~/project && git pull
-                    else
-                        git clone https://github.com/your-username/your-repo.git ~/project
-                    fi
+                cd ~/project
 
-                    # go to project folder
-                    cd ~/project
+                sudo docker compose down || true
+                sudo docker compose up -d
+              "
+            """
 
-                    # run docker compose
-                    docker compose down || true
-                    docker compose up -d
-                    '
-                """
-                }
-            }
-            }
+          }
         }
+      }
     }
 
 
     stage('Verify') {
       steps {
-        script {
+        withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
+          script {
+            def ip = params.VM_IP
+            sh """
+              echo "Verifying VM $ip..."
 
+              # Check SSH connectivity
+              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} azureuser@$ip "echo 'SSH connection OK'"
+
+              # Check Docker service
+              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} azureuser@$ip "sudo systemctl is-active docker"
+
+              # List Docker containers
+              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY_FILE} azureuser@$ip "docker ps --format 'table {{.Names}}\\t{{.Status}}'"
+              
+              echo "Verification finished."
+            """
+
+          }
         }
       }
     }
+
   }
 }
