@@ -66,28 +66,29 @@ pipeline {
       }
     }
 
-    stage('Ansible configure') {
+ stage('Ansible configure') {
       steps {
-            withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
-                script {
-                    def folder = "${TF_DIR}/vm_ip.txt"
-                    def ip = readFile(folder).trim()
+        withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
+          script {
+            def folder = "${TF_DIR}/vm_ip.txt"
+            def ip = readFile(folder).trim()
 
-                    sh '''
-                        chmod 600 "$SSH_KEY_FILE"
-                        echo "[ephemeral]" > /tmp/inv
-                        echo '${ip}' >> /tmp/inv
+            // Use double quotes for shell script to allow variable expansion
+            sh """
+              chmod 600 "\$SSH_KEY_FILE"
+              echo "[ephemeral]" > /tmp/inv
+              echo "${ip}" >> /tmp/inv
 
-                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key="$SSH_KEY_FILE" -u azureuser
-                    '''
-                }
-            }
+              echo "Using IP address: ${ip}"
+              echo "Inventory file contents:"
+              cat /tmp/inv
+
+              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key="\$SSH_KEY_FILE" -u azureuser
+            """
+          }
+        }
       }
     }
-
-
-
-
   }
 
   post {
