@@ -75,7 +75,8 @@ pipeline {
 
             // Use double quotes for shell script to allow variable expansion
             sh """
-              chmod 600 "\$SSH_KEY_FILE"
+              chmod 600 ${SSH_KEY_FILE}
+              echo ${SSH_KEY_FILE}
               echo "[ephemeral]" > /tmp/inv
               echo "${ip}" >> /tmp/inv
 
@@ -83,7 +84,7 @@ pipeline {
               echo "Inventory file contents:"
               cat /tmp/inv
 
-              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key="\$SSH_KEY_FILE" -u azureuser
+              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key=${SSH_KEY_FILE} -u azureuser
             """
           }
         }
