@@ -23,28 +23,30 @@ pipeline {
     stage('SSH Deploy to Azure VM') {
       steps {
         withCredentials([file(credentialsId: env.SSH_KEY_CRED, variable: 'SSH_KEY_FILE')]) {
-          lock(resource: "vm-deploy-${params.VM_IP}") {
-            script {
-              def ip = params.VM_IP
-              sh """
-                chmod 600 "\$SSH_KEY_FILE"
+          script {
+            def ip = params.VM_IP
+            sh """
+              # Copy key to temporary location to avoid path issues
+              cp "\$SSH_KEY_FILE" /tmp/deploy_key
+              chmod 600 /tmp/deploy_key
 
-                ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "
-                  if [ -d ~/project ]; then
-                      cd ~/project && git pull
-                  else
-                      git clone https://github.com/your-username/your-repo.git ~/project
-                  fi
+              ssh -o StrictHostKeyChecking=no -i /tmp/deploy_key azureuser@$ip "
+                if [ -d ~/project ]; then
+                    cd ~/project && git pull
+                else
+                    git clone https://github.com/your-username/your-repo.git ~/project
+                fi
 
-                  cd ~/project
-
-                  sudo docker compose down || true
-                  sudo docker compose up -d
-                "
-              """
-            }
-          }  // Missing this closing brace for 'lock'
-        }  // Missing this closing brace for 'withCredentials'
+                cd ~/project
+                sudo docker compose down || true
+                sudo docker compose up -d
+              "
+              
+              # Clean up
+              rm -f /tmp/deploy_key
+            """
+          }
+        }
       }
     }
 
@@ -54,18 +56,25 @@ pipeline {
           script {
             def ip = params.VM_IP
             sh """
+              # Copy key to temporary location
+              cp "\$SSH_KEY_FILE" /tmp/verify_key
+              chmod 600 /tmp/verify_key
+
               echo "Verifying VM $ip..."
 
               # Check SSH connectivity
-              ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "echo 'SSH connection OK'"
+              ssh -o StrictHostKeyChecking=no -i /tmp/verify_key azureuser@$ip "echo 'SSH connection OK'"
 
               # Check Docker service
-              ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "sudo systemctl is-active docker"
+              ssh -o StrictHostKeyChecking=no -i /tmp/verify_key azureuser@$ip "sudo systemctl is-active docker"
 
               # List Docker containers
-              ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY_FILE" azureuser@$ip "docker ps --format 'table {{.Names}}\\t{{.Status}}'"
+              ssh -o StrictHostKeyChecking=no -i /tmp/verify_key azureuser@$ip "docker ps --format 'table {{.Names}}\\t{{.Status}}'"
               
               echo "Verification finished."
+              
+              # Clean up
+              rm -f /tmp/verify_key
             """
           }
         }
