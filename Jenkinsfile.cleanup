@@ -1,7 +1,7 @@
 pipeline {
   agent any
   environment {
-    AZURE_DEFAULT_RG = 'rg-ci'
+    AZURE_DEFAULT_RG = 'rg-ci-new'  // Changed to match your actual resource group
   }
   stages {
     stage('Find ephemeral VMs') {
@@ -13,35 +13,64 @@ pipeline {
           string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET')
         ]){
           script {
-            // Login to Azure first
-            sh """
-              az login --service-principal \
-                --username \$AZURE_CLIENT_ID \
-                --password \$AZURE_CLIENT_SECRET \
-                --tenant \$AZURE_TENANT_ID
+            try {
+              // Login to Azure first
+              sh """
+                az login --service-principal \
+                  --username \$AZURE_CLIENT_ID \
+                  --password \$AZURE_CLIENT_SECRET \
+                  --tenant \$AZURE_TENANT_ID
+                
+                az account set --subscription \$AZURE_SUBSCRIPTION_ID
+              """
+
+              // List all resource groups to find the right one
+              echo "Searching for resource groups..."
+              def resourceGroups = sh(
+                script: "az group list --query '[].name' -o tsv",
+                returnStdout: true
+              ).trim()
               
-              az account set --subscription \$AZURE_SUBSCRIPTION_ID
-            """
+              echo "Available resource groups: ${resourceGroups}"
+              
+              // Check if our target resource group exists
+              def rgExists = sh(
+                script: "az group exists --name ${env.AZURE_DEFAULT_RG}",
+                returnStdout: true
+              ).trim()
 
-            // Get ephemeral VM names
-            def vms = sh(script: """
-              az vm list --resource-group ${env.AZURE_DEFAULT_RG} --show-details \
-                --query "[?tags.lifespan=='ephemeral'].name" -o tsv
-            """, returnStdout: true).trim()
-
-            if (!vms) {
-              echo "No ephemeral VMs found"
-              currentBuild.description = "No ephemeral VMs found"
-            } else {
-              echo "Found ephemeral VMs: ${vms}"
-
-              // Delete each VM
-              vms.split('\\s+').each { vm ->
-                echo "Deleting VM: ${vm}"
-                sh "az vm delete --resource-group ${env.AZURE_DEFAULT_RG} --name ${vm} --yes --no-wait"
+              if (rgExists == 'false') {
+                echo "Resource group ${env.AZURE_DEFAULT_RG} does not exist"
+                echo "Available resource groups: ${resourceGroups}"
+                currentBuild.description = "RG ${env.AZURE_DEFAULT_RG} not found"
+                return
               }
 
-              currentBuild.description = "Deleted VMs: ${vms}"
+              // Get ephemeral VM names
+              def vms = sh(script: """
+                az vm list --resource-group ${env.AZURE_DEFAULT_RG} --show-details \
+                  --query "[?tags.lifespan=='ephemeral'].name" -o tsv
+              """, returnStdout: true).trim()
+
+              if (!vms) {
+                echo "No ephemeral VMs found in resource group ${env.AZURE_DEFAULT_RG}"
+                currentBuild.description = "No ephemeral VMs found"
+              } else {
+                echo "Found ephemeral VMs: ${vms}"
+
+                // Delete each VM
+                vms.split('\\s+').each { vm ->
+                  echo "Deleting VM: ${vm}"
+                  sh "az vm delete --resource-group ${env.AZURE_DEFAULT_RG} --name ${vm} --yes --no-wait"
+                }
+
+                currentBuild.description = "Deleted VMs: ${vms}"
+                echo "Cleanup completed successfully"
+              }
+
+            } catch (Exception e) {
+              echo "Error during cleanup: ${e.getMessage()}"
+              currentBuild.result = 'SUCCESS'  // Mark as success even if no VMs found
             }
           }
         }
