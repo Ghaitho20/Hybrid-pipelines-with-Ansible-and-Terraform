@@ -44,27 +44,7 @@ pipeline {
       }
     }
 
-    stage('Get outputs') {
-      steps {
-        dir("${TF_DIR}") {
-          script {
-            //extracting of Ip address
-            def ip = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
-            echo "Azure VM IP: ${ip}"
 
-            // Save VM ip address in a file named vm_ip.txt in the ${TF_DIR} folder
-            writeFile file: 'vm_ip.txt', text: ip
-
-            //publish artifacts 
-            archiveArtifacts artifacts: 'vm_ip.txt', fingerprint: true
-
-            // Add info to build metadata
-            currentBuild.description = "VM_IP=${ip}"
-            env.VM_IP = ip
-          }
-        }
-      }
-    }
 
     stage('Get outputs') {
       steps {
