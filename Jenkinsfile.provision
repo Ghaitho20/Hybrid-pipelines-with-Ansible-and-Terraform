@@ -68,27 +68,25 @@ pipeline {
 
     stage('Ansible configure') {
         steps {
-            withCredentials([file(credentialsId: 'SSH_KEY_FILE', variable: 'SSH_KEY_FILE')]) {
-                script {
-                    def folder = "${TF_DIR}/vm_ip.txt"
-                    def ip = readFile(folder).trim()
-                    
-                    // Use double quotes for Groovy string to expand ${ip}
+            script {
+                def folder = "${TF_DIR}/vm_ip.txt"
+                def ip = readFile(folder).trim()
+
+                // Use ssh-agent with the Jenkins SSH credentials
+                sshagent(['SSH_KEY_CREDENTIAL_ID']) { // Replace with your Jenkins SSH credential ID
                     sh """
-                      # Set proper permissions for the SSH key
-                      chmod 600 "$SSH_KEY_FILE"
+                        # Create Ansible inventory
+                        echo "[ephemeral]" > /tmp/inv
+                        echo "${ip}" >> /tmp/inv
 
-                      # Create Ansible inventory
-                      echo "[ephemeral]" > /tmp/inv
-                      echo ${ip} >> /tmp/inv
-
-                      # Run Ansible playbook
-                      ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml --private-key="$SSH_KEY_FILE" -u azureuser
+                        # Run Ansible playbook
+                        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yml -u azureuser
                     """
                 }
             }
-        } 
+        }
     }
+
 
 
   }
