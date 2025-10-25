@@ -44,21 +44,23 @@ pipeline {
       }
     }
 
-
-
     stage('Get outputs') {
       steps {
         dir("${TF_DIR}") {
           script {
             //extracting of Ip address
-            def ip = sh(
-              script: "terraform output -raw public_ip",
-              returnStdout: true
-            ).trim()
-            
+            def ip = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
+            echo "Azure VM IP: ${ip}"
 
             // Save VM ip address in a file named vm_ip.txt in the ${TF_DIR} folder
             writeFile file: 'vm_ip.txt', text: ip
+
+            //publish artifacts 
+            archiveArtifacts artifacts: 'vm_ip.txt', fingerprint: true
+
+            // Add info to build metadata
+            currentBuild.description = "VM_IP=${ip}"
+            env.VM_IP = ip
           }
         }
       }
@@ -70,26 +72,21 @@ pipeline {
           script {
             def folder = "${TF_DIR}/vm_ip.txt"
             def ip = readFile(folder).trim()
-            sh             sh """
-              # Set proper permissions for the SSH key (properly quoted)
-              chmod 600 "\$SSH_KEY_FILE"
+            sh """
+              # Set proper permissions for the SSH key
+              chmod 600 \$SSH_KEY_FILE 
 
               # Create Ansible inventory
-              cat > /tmp/inv << EOF
-[ephemeral]
-${ip}
-EOF
+              echo "[ephemeral]" > /tmp/inv
+              echo "${ip}" >> /tmp/inv
 
               # Run Ansible playbook
-              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yaml --private-key="\$SSH_KEY_FILE" -u azureuser
+              ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i /tmp/inv ansible/playbook.yaml --private-key=\$SSH_KEY_FILE -u azureuser
             """
           }
         }
       }
     }
-
-
-
   }
 
   // post {
