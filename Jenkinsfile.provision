@@ -26,10 +26,10 @@ pipeline {
                 def ssh_pub_content = readFile(SSH_PUB_FILE).trim().replaceAll("\n","")
                 dir("${TF_DIR}") {
 
-                    sh '''
+                    sh """
                         terraform init -input=false
                         terraform apply -auto-approve -var 'ssh_public_key=${ssh_pub_content}' -input=false
-                    '''
+                    """
                 }
               }  
             }
