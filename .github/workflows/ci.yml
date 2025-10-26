@@ -34,7 +34,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Push backend docker image (only if scan passes)
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/paris-backend:latest
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/paris-backend:NEW
 
       - name: Build frontend docker image
         run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:latest ./frontend
@@ -106,35 +106,19 @@ jobs:
         run: |
           chmod +x ./worflows_scripts/wait-backend.sh
           ./worflows_scripts/wait-backend.sh
-  # # Trigger Jenkins Pipelines
-  # trigger-jenkins:
-  #   name: Trigger Jenkins CD Pipelines
-  #   runs-on: ubuntu-latest
-  #   needs: docker-compose-test
-  #   steps:
-  #     - name: Trigger Jenkins Pipeline-1
-  #       env:
-  #         JENKINS_USER: ${{ secrets.JENKINS_USER }}
-  #         JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
-  #         JENKINS_URL: ${{ secrets.JENKINS_URL }}
-  #       run: |
-  #         curl -X POST "${JENKINS_URL}/job/Pipeline-1/build?token=trigger-token" \
-  #         --user "$JENKINS_USER:$JENKINS_API_TOKEN"
+  # Trigger Jenkins Pipelines
+  trigger-jenkins:
+    name: Trigger Jenkins CD Pipelines
+    runs-on: ubuntu-latest
+    needs: docker-compose-test
+    steps:
+      - name: Trigger Jenkins Pipeline-1
+        env:
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+        run: |
+          curl -X POST "https://trigonous-inapprehensible-fonda.ngrok-free.dev/job/Hybrid pipeline First Job (Provision)/build?token=trigger-token" \
+          --user "$JENKINS_USER:$JENKINS_API_TOKEN"
 
-  #     - name: Trigger Jenkins Pipeline-2
-  #       env:
-  #         JENKINS_USER: ${{ secrets.JENKINS_USER }}
-  #         JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
-  #         JENKINS_URL: ${{ secrets.JENKINS_URL }}
-  #       run: |
-  #         curl -X POST "${JENKINS_URL}/job/Pipeline-2/build?token=trigger-token" \
-  #         --user "$JENKINS_USER:$JENKINS_API_TOKEN"
 
-  #     - name: Trigger Jenkins Pipeline-3
-  #       env:
-  #         JENKINS_USER: ${{ secrets.JENKINS_USER }}
-  #         JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
-  #         JENKINS_URL: ${{ secrets.JENKINS_URL }}
-  #       run: |
-  #         curl -X POST "${JENKINS_URL}/job/Pipeline-3/build?token=trigger-token" \
-  #         --user "$JENKINS_USER:$JENKINS_API_TOKEN"
