@@ -1,6 +1,5 @@
 
-const API_BASE_URL = window.APP_CONFIG?.API_BASE_URL || 'http://localhost:5000/api';
-
+const API_BASE_URL = '/api';
 console.log("################")
 console.log(API_BASE_URL)
 
@@ -20,7 +19,7 @@ const chartColors = [
 // Fonction pour récupérer les données de l'API
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        const response = await fetch(`api${endpoint}`);
         if (!response.ok) throw new Error('Network response was not ok');
         return await response.json();
     } catch (error) {
