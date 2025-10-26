@@ -34,22 +34,22 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Push backend docker image (only if scan passes)
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/paris-backend:NEW
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/paris-backend:latest
 
       - name: Build frontend docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:latest ./frontend
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:NEW ./frontend
 
       - name: Scan frontend image with Trivy (LOCAL)
         uses: aquasecurity/trivy-action@0.18.0
         with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:latest  
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:NEW  
           format: 'table'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
       - name: Push frontend docker image (only if scan passes)
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:latest
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/paris-frontend:NEW
   # Run backend tests
   backend-tests:
     name: Run Backend API Tests
