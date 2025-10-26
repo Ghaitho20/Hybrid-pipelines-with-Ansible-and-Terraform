@@ -118,7 +118,8 @@ jobs:
           JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
           JENKINS_URL: ${{ secrets.JENKINS_URL }}
         run: |
-          curl -X POST "https://trigonous-inapprehensible-fonda.ngrok-free.dev/job/Hybrid pipeline First Job (Provision)/build?token=trigger-token" \
-          --user "$JENKINS_USER:$JENKINS_API_TOKEN"
+          curl -X POST "https://trigonous-inapprehensible-fonda.ngrok-free.dev/job/Hybrid%20pipeline%20First%20Job%20%28Provision%29/build?token=trigger-token" \
+              --user "$JENKINS_USER:$JENKINS_API_TOKEN"
+
 
 
